@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Sinh Viên</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f8f9fa; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .form-row input { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-group { margin-bottom: 20px; display: flex; gap: 10px; }
+        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-green { background: #28a745; color: white; }
+        .btn-yellow { background: #ffc107; color: black; }
+        .btn-gray { background: #6c757d; color: white; }
+        .btn-blue { background: #007bff; color: white; }
+        .btn-red { background: #dc3545; color: white; padding: 4px 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #007bff; color: white; }
+        tr:nth-child(even) { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>QUẢN LÝ SINH VIÊN</h2>
+
+    <input type="hidden" id="studentId">
+    <div class="form-row">
+        <input type="text" id="studentCode" placeholder="Mã SV">
+        <input type="text" id="fullName" placeholder="Họ và tên">
+        <input type="email" id="email" placeholder="Email">
+        <input type="text" id="phone" placeholder="Số điện thoại">
+        <input type="text" id="className" placeholder="Lớp">
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-green" onclick="createStudent()">Thêm Mới</button>
+        <button class="btn-yellow" onclick="updateStudent()">Cập Nhật</button>
+        <button class="btn-gray" onclick="resetForm()">Làm Mới</button>
+    </div>
+
+    <div class="form-row">
+        <input type="text" id="searchKeyword" placeholder="Nhập tên sinh viên cần tìm...">
+        <button class="btn-blue" onclick="searchStudent()">Tìm Kiếm</button>
+        <button class="btn-gray" onclick="loadStudents()">Hiện Tất Cả</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Mã SV</th>
+                <th>Họ và Tên</th>
+                <th>Email</th>
+                <th>SĐT</th>
+                <th>Lớp</th>
+                <th>Thao Tác</th>
+            </tr>
+        </thead>
+        <tbody id="studentTableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    function loadStudents() {
+        fetch('/api/students')
+            .then(res => res.json())
+            .then(data => renderTable(data))
+            .catch(err => console.error("Lỗi nạp dữ liệu:", err));
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('studentTableBody');
+        tbody.innerHTML = '';
+        if (!Array.isArray(data)) return;
+
+        data.forEach((s, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${s.studentCode || s.student_code || ''}</td>
+                <td>${s.fullName || s.full_name || ''}</td>
+                <td>${s.email || ''}</td>
+                <td>${s.phone || ''}</td>
+                <td>${s.className || s.class_name || ''}</td>
+                <td>
+                    <button class="btn-yellow" onclick="editRow('${s.id}', '${s.studentCode || s.student_code || ''}', '${s.fullName || s.full_name || ''}', '${s.email || ''}', '${s.phone || ''}', '${s.className || s.class_name || ''}')">Sửa</button>
+                    <button class="btn-red" onclick="deleteStudent('${s.id}')">Xóa</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function createStudent() {
+        const payload = {
+            studentCode: document.getElementById('studentCode').value,
+            fullName: document.getElementById('fullName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            className: document.getElementById('className').value
+        };
+        fetch('/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => { loadStudents(); resetForm(); })
+        .catch(err => console.error(err));
+    }
+
+    function deleteStudent(id) {
+        if (confirm('Bạn chắc chắn muốn xóa?')) {
+            fetch(`/api/students/delete/${id}`, { method: 'POST' })
+                .then(() => loadStudents())
+                .catch(err => console.error(err));
+        }
+    }
+
+    function editRow(id, code, name, email, phone, cls) {
+        document.getElementById('studentId').value = id;
+        document.getElementById('studentCode').value = code;
+        document.getElementById('fullName').value = name;
+        document.getElementById('email').value = email;
+        document.getElementById('phone').value = phone;
+        document.getElementById('className').value = cls;
+    }
+
+    function updateStudent() {
+        const id = document.getElementById('studentId').value;
+        if (!id) {
+            alert('Vui lòng chọn một sinh viên từ danh sách để sửa!');
+            return;
+        }
+        const payload = {
+            studentCode: document.getElementById('studentCode').value,
+            fullName: document.getElementById('fullName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            className: document.getElementById('className').value
+        };
+        fetch(`/api/students/update/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => { loadStudents(); resetForm(); })
+        .catch(err => console.error(err));
+    }
+
+    function searchStudent() {
+        const keyword = document.getElementById('searchKeyword').value;
+        fetch(`/api/students/search?name=${encodeURIComponent(keyword)}`)
+            .then(res => res.json())
+            .then(data => renderTable(data))
+            .catch(err => console.error(err));
+    }
+
+    function resetForm() {
+        document.getElementById('studentId').value = '';
+        document.getElementById('studentCode').value = '';
+        document.getElementById('fullName').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('phone').value = '';
+        document.getElementById('className').value = '';
+    }
+
+    window.onload = loadStudents;
+</script>
+
+</body>
+</html>
